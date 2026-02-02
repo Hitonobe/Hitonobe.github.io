@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon2.ico">
+  <title>about - 文字数水増しメーカー</title>
+  <meta name="viewport" content="width=device-width">
+</head>
+<body>
+
+<header>
+  <h1>使い方・仕組み</h1>
+  <nav><a href="index.html">← ツールに戻る</a></nav>
+</header>
+
+<main>
+  <section class="settings"> <h3>これって何？</h3>
+    <p>見た目を変えずに文字数だけを増やすための「レポート救済ツール」です。</p>
+
+    <h3>仕組み（内部処理）</h3>
+    <p>このツールでは、主に2つの魔法を使っています。</p>
+    <ul>
+      <li><strong>ゼロ幅スペース（ZWSP）:</strong> 幅が0で画面には見えない特殊な文字を、単語の間に大量に埋め込んでいます。</li>
+      <li><strong>濁点分離:</strong> 「が」を「か＋゛」のように分解することで、見た目を変えずに文字数を2倍にカウントさせます。</li>
+    </ul>
+
+    <h3>注意点</h3>
+    <p>最近の厳しい教授やシステムでは、見えない文字を検出する場合があるので、使いすぎには注意してください（笑）</p>
+  </section>
+</main>
+
+</body>
+</html>

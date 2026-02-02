@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.ico">
+  <title>文字数水増しメーカー</title>
+  <meta name="viewport" content="width=device-width">
+  <meta name="description" content="文字列水増しメーカーとは､見かけ上のテキストの見た目を変えずに､内部の文字数だけを増加させるツールです｡">
+</head>
+
+<body>
+
+<header>
+  <h1>文字数水増しメーカー【まだ開発中！！どっからアクセスした！？】</h1>
+  <nav>
+    <a href="#">home</a> |
+    <a href="about.html">使い方・仕組み</a> |
+    <a href="#">ⓘ information</a>
+  </nav>
+</header>
+
+<main>
+  <section class="description">
+    <p>文字列水増しメーカーとは､表示上のテキストの見た目を変えずに､内部の文字数だけを増加させるツールです。 課題やレポートの嵩増しなどに是非…(小声)</p>
+    <button class="リセットボタン" type="button" onclick="resetAll()">リセット</button>
+  </section>
+
+  <section class="box">
+    <textarea id="inputText" placeholder="テキストを入力..." oninput="updateInputCount()"></textarea>
+    <div class="count">現在の文字数：<span id="inputCount">0</span></div>
+  </section>
+
+  <section class="settings">
+    <h3>設定</h3>
+    <div class="row">
+    <select id="mode" onchange="updateHint()">
+     <option value="target">目標字数に出力</option>
+     <option value="add_relative">指定数を加算（元の文章量 + N）</option>
+    </select>
+  <span>＝</span> <input type="number" id="targetCount" placeholder="数を入力" oninput="updateHint()">
+</div>
+
+    <div class="row">
+      <label>
+        <input type="checkbox" id="separatePunctuation" checked> 濁点と半濁点を分離
+      </label>
+    </div>
+
+    <div class="row">
+      <label>
+        <input type="checkbox" id="random"> 0幅スペースの挿入位置を非均等(ランダム)にする。
+      </label>
+    </div>
+  </section>
+
+  <button class="go" onclick="go()">GO!</button>
+  <span id="processHint" class="hint">0文字 ➡ 0文字</span>
+
+  <div id="errorMessage"></div>
+
+  <section class="box">
+    <textarea id="outputText" placeholder="テキスト出力欄" readonly></textarea>
+    <div class="count">現在の文字数：<span id="outputCount">0</span></div>
+  </section>
+
+  <button class="copy" onclick="copyText()">全文コピー</button>
+</main>
+
+<script>
+const ZWSP = "\u200B";
+
+function resetAll() {
+  document.getElementById("inputText").value = "";
+  document.getElementById("outputText").value = "";
+  document.getElementById("targetCount").value = "";
+  document.getElementById("errorMessage").textContent = "";
+  updateInputCount();
+  updateOutputCount(0);
+  updateHint();
+}
+
+function updateInputCount() {
+  const text = document.getElementById("inputText").value;
+  document.getElementById("inputCount").textContent = [...text].length;
+  updateHint();
+}
+
+function updateOutputCount(count) {
+  document.getElementById("outputCount").textContent = count;
+}
+
+function updateHint() {
+  const current = [...document.getElementById("inputText").value].length;
+  const targetVal = Number(document.getElementById("targetCount").value);
+  const mode = document.getElementById("mode").value;
+  
+  let targetTotal = targetVal;
+  if (mode === "add_relative") {
+    targetTotal = current + targetVal;
+  }
+  
+  document.getElementById("processHint").textContent = `${current}文字 → ${targetTotal}文字`;
+  return targetTotal;
+}
+
+function decomposeJapanese(str, limit) {
+  let result = "";
+  let currentCount = [...str].length;
+  const chars = [...str];
+
+  for (let char of chars) {
+    const decomposed = char.normalize("NFD");
+    const diff = [...decomposed].length - 1;
+
+    if (diff > 0 && currentCount + diff <= limit) {
+      result += decomposed;
+      currentCount += diff;
+    } else {
+      result += char;
+    }
+  }
+  return { text: result, count: currentCount };
+}
+
+function insertEvenly(str, count) {
+  const chars = [...str];
+  let result = "";
+  let acc = 0;
+  for (let i = 0; i < chars.length; i++) {
+    result += chars[i];
+    acc += count / chars.length;
+    if (acc >= 1) {
+      const n = Math.floor(acc);
+      result += ZWSP.repeat(n);
+      acc -= n;
+    }
+  }
+  return result;
+}
+
+function insertRandom(str, count) {
+  let chars = [...str];
+  for (let i = 0; i < count; i++) {
+    const pos = Math.floor(Math.random() * (chars.length + 1));
+    chars.splice(pos, 0, ZWSP);
+  }
+  return chars.join("");
+}
+
+function go() {
+  const input = document.getElementById("inputText").value;
+  const mode = document.getElementById("mode").value;
+  const targetRaw = Number(document.getElementById("targetCount").value);
+  const doSeparate = document.getElementById("separatePunctuation").checked;
+  const isRandom = document.getElementById("random").checked;
+  const errorEl = document.getElementById("errorMessage");
+
+  errorEl.textContent = ""; 
+  const current = [...input].length;
+  let finalTarget = (mode === "add_relative") ? current + targetRaw : targetRaw;
+
+  if (finalTarget < current) {
+    errorEl.textContent = "設定値が元の文字数より少ないです！当サイトで字数を減らすことはできません！";
+    return;
+  }
+
+  let processingText = input;
+  let currentCount = current;
+
+  // 1. 濁音分離
+  if (doSeparate) {
+    const res = decomposeJapanese(input, finalTarget);
+    processingText = res.text;
+    currentCount = res.count;
+  }
+
+  // 2. 0幅スペース挿入
+  const need = finalTarget - currentCount;
+  let output = processingText;
+  if (need > 0) {
+    output = isRandom ? insertRandom(processingText, need) : insertEvenly(processingText, need);
+  }
+
+  // 3. ★バグ防止：最終調整バリデーター★
+  // 生成後の文字数を再カウントし、足りなければランダムな位置にZWSPを補充
+  let finalChars = [...output];
+  while (finalChars.length < finalTarget) {
+    const randomPos = Math.floor(Math.random() * (finalChars.length + 1));
+    finalChars.splice(randomPos, 0, ZWSP);
+  }
+  output = finalChars.join("");
+
+  document.getElementById("outputText").value = output;
+  updateOutputCount([...output].length);
+}
+
+function copyText() {
+  const out = document.getElementById("outputText");
+  out.select();
+  document.execCommand("copy");
+}
+</script>
+
+</body>
+
+</html>
+
+<!--
+正直プログラミングとか分かんないからGeminiにクソお世話になりました。
+AI臭強いコードだけど許しておくれ…
+-->
